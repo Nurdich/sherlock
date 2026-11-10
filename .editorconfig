@@ -13,6 +13,9 @@ spaces_around_operators = true
 [*.{markdown,md}]
 trim_trailing_whitespace = false
 
+[*.go]
+indent_style = tab
+
 [*.py]
 indent_size = 4
 quote_type = double

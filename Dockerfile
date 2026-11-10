@@ -1,31 +1,40 @@
-# Release instructions:
-  # 1. Update the version tag in the Dockerfile to match the version in sherlock/__init__.py
-  # 2. Update the VCS_REF tag to match the tagged version's FULL commit hash
-  # 3. Build image with BOTH latest and version tags
-    # i.e. `docker build -t sherlock/sherlock:0.16.0 -t sherlock/sherlock:latest .`
+# Go port of Sherlock.
+#   docker build -t sherlock .
+#   docker run --rm sherlock --help
+#   docker run --rm sherlock user123
 
-FROM python:3.12-slim-bullseye AS build
-WORKDIR /sherlock
+FROM golang:1.22-bookworm AS build
+WORKDIR /src
 
-RUN pip3 install --no-cache-dir --upgrade pip
+ARG VERSION=0.16.2
 
-FROM python:3.12-slim-bullseye
-WORKDIR /sherlock
+COPY go.mod go.sum ./
+RUN go mod download
 
-ARG VCS_REF= # CHANGE ME ON UPDATE
-ARG VCS_URL="https://github.com/sherlock-project/sherlock"
-ARG VERSION_TAG= # CHANGE ME ON UPDATE
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath \
+    -ldflags "-s -w -X github.com/Nurdich/sherlock/internal/version.Version=${VERSION}" \
+    -o /out/sherlock ./cmd/sherlock
+
+FROM debian:bookworm-slim
+
+ARG VERSION=0.16.2
+ARG VCS_REF=
+ARG VCS_URL="https://github.com/Nurdich/sherlock"
 
 ENV SHERLOCK_ENV=docker
 
 LABEL org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.vcs-url=$VCS_URL \
       org.label-schema.name="Sherlock" \
-      org.label-schema.version=$VERSION_TAG \
+      org.label-schema.version=$VERSION \
       website="https://sherlockproject.xyz"
 
-RUN pip3 install --no-cache-dir sherlock-project==$VERSION_TAG
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /out/sherlock /usr/local/bin/sherlock
 
 WORKDIR /sherlock
-
 ENTRYPOINT ["sherlock"]

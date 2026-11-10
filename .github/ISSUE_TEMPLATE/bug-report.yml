@@ -11,7 +11,7 @@ body:
         Knowing which packages are affected helps us diagnose package-specific bugs.
       options:
         - Select one
-        - PyPI (via pip)
+        - Go (go install / go build)
         - Homebrew
         - Docker
         - Kali repository (via apt)
